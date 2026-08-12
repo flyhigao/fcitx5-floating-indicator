@@ -40,7 +40,7 @@ cat > "$PLIST_PATH" <<'EOF'
     <key>CFBundleExecutable</key>
     <string>FloatingIM</string>
     <key>CFBundleIdentifier</key>
-    <string>local.xiang.floating-im</string>
+    <string>local.floating-im</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>

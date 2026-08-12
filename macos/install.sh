@@ -7,8 +7,8 @@ cd "$(dirname "$0")"
 
 APP_BUNDLE="FloatingIM.app"
 DEST="$HOME/Applications/$APP_BUNDLE"
-PLIST="$HOME/Library/LaunchAgents/local.xiang.floating-im.plist"
-LABEL="local.xiang.floating-im"
+PLIST="$HOME/Library/LaunchAgents/local.floating-im.plist"
+LABEL="local.floating-im"
 
 mkdir -p "$HOME/Applications"
 rm -rf "$DEST"

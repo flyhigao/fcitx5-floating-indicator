@@ -54,6 +54,39 @@ X11/fcitx5 版（`../src/fcitx5-floating-indicator.py`）的 macOS 移植。一�
 open FloatingIM.app
 ```
 
+### 签名证书与权限持久化
+
+macOS 的 TCC 权限（屏幕录制、输入监控）绑定应用的**代码签名身份**。ad-hoc 签名每次重新编译都会生成新指纹，系统会把它当成新应用，已授权的权限随之失效（每次重编译都弹授权框）。解决方法是使用一个**固定的自签名代码签名证书**。
+
+创建证书（只需一次）：
+
+1. 打开「钥匙串访问」(Keychain Access)
+2. 菜单栏 → 钥匙串访问 → 证书助理 → 创建证书
+3. 名称填 `FloatingIM Dev`，身份类型选「**自签名根证书**」，证书类型选「**代码签名**」
+4. 点「创建」→「继续」完成
+
+`build.sh` 会自动查找并使用该证书签名；找不到时退回 ad-hoc 签名并打印警告（此时每次重编译后需要重新授权屏幕录制）。
+
+## 安装与开机自启
+
+```bash
+./install.sh    # 构建并安装到 ~/Applications，注册开机自启，立即启动
+./uninstall.sh  # 停止并删除应用与自启
+```
+
+`install.sh` 做了三件事：构建 `.app` → 拷贝到 `~/Applications/FloatingIM.app` → 注册 LaunchAgent（`~/Library/LaunchAgents/local.floating-im.plist`）。LaunchAgent 的 `RunAtLoad` 保证**每次登录时自动启动**，无需手动打开。
+
+### 退出与自启控制
+
+| 目的 | 操作 |
+|---|---|
+| 临时退出（下次登录会再启动） | 终端执行 `pkill FloatingIM`；或点菜单栏 中/英 图标 → 退出 FloatingIM（图标被系统隐藏时用 pkill） |
+| 取消开机自启（保留应用，手动启动） | `launchctl unload ~/Library/LaunchAgents/local.floating-im.plist` |
+| 恢复开机自启 | `launchctl load ~/Library/LaunchAgents/local.floating-im.plist` |
+| 彻底卸载（删应用 + 取消自启） | `./uninstall.sh` |
+
+退出后应用不会自动重启（LaunchAgent 只在登录时拉起），因此 `pkill` 就是干净的关闭方式。
+
 ### 权限说明
 
 | 权限 | 用途 | 必需？ |
@@ -61,20 +94,9 @@ open FloatingIM.app
 | 屏幕录制 | OCR 识别豆包切换小窗的中/英文字（绝对校准） | 建议开启 |
 | 输入监控 | 非豆包输入法场景下打字时隐藏 | 可选 |
 
-授权路径：系统设置 → 安全性与隐私 → 隐私 → 屏幕录制 / 输入监控 → 勾选 FloatingIM（授权后需重启应用）。
+授权路径：系统设置 → 安全性与隐私 → 隐私 → 屏幕录制 / 输入监控 → 勾选 FloatingIM（授权后需重启应用）。安装到 `~/Applications` 时签名身份不变，已授权限会自动延续；若 bundle id 或签名证书发生变化，需重新授权一次。
 
-菜单栏有 中/英 状态图标（菜单栏拥挤时可能被系统隐藏），提供权限申请、手动校准和退出。菜单栏图标不可见时，可在终端用 `pkill FloatingIM` 退出。
-
-### 签名与权限持久化
-
-`build.sh` 使用钥匙串中的「FloatingIM Dev」代码签名证书签名（首次需手动创建：钥匙串访问 → 证书助理 → 创建证书 → 名称 FloatingIM Dev、身份类型"自签名根证书"、证书类型"代码签名"）。固定签名身份保证 TCC 权限不会因重新编译而失效。证书缺失时自动退回 ad-hoc 签名（此时每次重编译后需重新授权）。
-
-## 安装 / 卸载
-
-```bash
-./install.sh    # 构建并安装到 ~/Applications，注册开机自启 (LaunchAgent)
-./uninstall.sh  # 移除自启和应用
-```
+菜单栏有 中/英 状态图标（菜单栏拥挤时可能被系统隐藏），提供权限申请、手动校准和退出。
 
 ## 已知限制
 
