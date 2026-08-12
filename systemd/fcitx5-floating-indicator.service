@@ -1,0 +1,17 @@
+[Unit]
+Description=Fcitx5 Floating Input Indicator
+After=graphical-session-pre.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/.local/bin/fcitx5-floating-indicator.py
+Restart=on-failure
+RestartSec=2
+Environment=PYTHONUNBUFFERED=1
+# Keep the indicator itself outside Fcitx5 input handling.
+Environment=GTK_IM_MODULE=gtk-im-context-simple
+Environment=QT_IM_MODULE=none
+Environment=XMODIFIERS=@im=none
+
+[Install]
+WantedBy=graphical-session.target
