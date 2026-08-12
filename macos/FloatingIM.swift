@@ -84,7 +84,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             requestScreenPermission()
         }
 
-        let follow = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+        // 跟随鼠标：与 Linux 版一致，250ms 轮询一次
+        let follow = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
             self?.updatePosition()
         }
         RunLoop.main.add(follow, forMode: .common)
@@ -94,13 +95,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         RunLoop.main.add(poll, forMode: .common)
 
-        // 豆包状态机拆成两个定时器：按键 5ms 高频轮询（捕捉极快的击键），窗口 20ms
-        let keys = Timer(timeInterval: 0.005, repeats: true) { [weak self] _ in
+        // 豆包状态机拆成两个定时器：按键高频轮询（捕捉极快击键），窗口低频扫描
+        let keys = Timer(timeInterval: 0.01, repeats: true) { [weak self] _ in
             self?.tickShiftKey()
         }
         RunLoop.main.add(keys, forMode: .common)
 
-        let track = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
+        let track = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
             self?.tickDoubaoWindows()
         }
         RunLoop.main.add(track, forMode: .common)
@@ -166,6 +167,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             origin.x = min(max(origin.x, vf.minX + 2), vf.maxX - size.width - 2)
             origin.y = min(max(origin.y, vf.minY + 2), vf.maxY - size.height - 2)
         }
+        // 位置没变时不发起窗口移动（降低开销）
+        let current = panel.frame.origin
+        if abs(current.x - origin.x) < 1 && abs(current.y - origin.y) < 1 { return }
         panel.setFrameOrigin(origin)
     }
 
