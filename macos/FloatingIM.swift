@@ -100,7 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         RunLoop.main.add(keys, forMode: .common)
 
-        let track = Timer(timeInterval: 0.02, repeats: true) { [weak self] _ in
+        let track = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
             self?.tickDoubaoWindows()
         }
         RunLoop.main.add(track, forMode: .common)
@@ -227,6 +227,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func tickDoubaoWindows() {
         let now = Date()
 
+        // 豆包未激活时无需扫描窗口（省去窗口列表遍历，降低常驻开销）
+        guard currentSourceIsDoubao else {
+            knownPopups.removeAll()
+            barAlive = false
+            barMoved = false
+            if doubaoUIAlive {
+                doubaoUIAlive = false
+                suppressed = false
+                show()
+            }
+            return
+        }
+
         // --- 豆包窗口扫描 ---
         // 豆包每次切换会创建一个新的 26×26 小窗；连按时旧窗还没消失新窗就会出现，
         // 因此按窗口 ID 集合差分检测，不漏掉重叠的小窗。
@@ -305,7 +318,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var barOn = false
         var barX: CGFloat = 0
         guard let list = CGWindowListCopyWindowInfo(
-            [.optionAll, .excludeDesktopElements], kCGNullWindowID
+            [.optionOnScreenOnly], kCGNullWindowID
         ) as? [[String: Any]] else {
             return ([], false, 0)
         }
