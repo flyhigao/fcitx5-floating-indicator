@@ -334,8 +334,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func requestScreenPermission() {
         guard !CGPreflightScreenCaptureAccess() else { return }
-        NSLog("FloatingIM 未获得「屏幕录制」权限（用于 OCR 识别豆包小窗的中/英）；"
-            + "如需授权请点菜单栏图标 → 屏幕录制。")
+        NSLog("FloatingIM 未获得「屏幕录制」授权（OCR 校准层）；豆包中英跟踪不依赖它，如需授权请点菜单栏图标。")
     }
 
     @objc private func requestScreenPermissionAction() {
@@ -363,8 +362,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     /// 截取小窗图像并用 Vision OCR 识别「中/英」。（后台线程调用）
+    /// 注：不依赖 CGPreflightScreenCaptureAccess（部分系统上预检会谎报），直接尝试截图。
     private func ocrPopup(_ windowID: CGWindowID) -> String? {
-        guard CGPreflightScreenCaptureAccess() else { return nil }
         // 小窗可能刚出现还没渲染完，带重试截屏
         var img: CGImage?
         for _ in 0..<5 {
@@ -372,7 +371,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if img != nil { break }
             Thread.sleep(forTimeInterval: 0.06)
         }
-        guard let captured = img else { return nil }
+        guard let captured = img else {
+            NSLog("豆包小窗截图失败（屏幕录制权限可能未生效；不影响主流程）")
+            return nil
+        }
         let target = upscaled(captured) ?? captured
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
@@ -540,8 +542,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func requestPermission() {
         guard !CGPreflightListenEventAccess() else { return }
-        NSLog("FloatingIM 未获得「输入监控」权限（打字隐藏的辅助手段，非必需）；"
-            + "如需授权请点菜单栏图标 → 输入监控。")
+        CGRequestListenEventAccess()
+        NSLog("FloatingIM 申请「输入监控」权限（打字隐藏的辅助手段，非必需）。")
     }
 
     @objc private func requestPermissionAction() {
