@@ -4,3 +4,8 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+
+# macOS 版本构建产物
+macos/FloatingIM.app/
+macos/diagnose
+macos/probe-popup
