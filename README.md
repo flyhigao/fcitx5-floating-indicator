@@ -4,7 +4,7 @@
 
 > 另有一个**个人使用**的 macOS 移植（跟随鼠标的「中/英」浮动指示器），位于 [`macos/`](macos/) 目录，仅供个人参考，不适合公开发布。
 
-它在不输入、没有候选词时显示一个小型“中/英”窗口；开始输入或出现候选词时隐藏。窗口跟随鼠标移动，因此也适用于不提供文本光标位置的终端类应用。
+它在不输入、没有候选词时显示一个小型“中/英”窗口；开始输入或出现候选词时隐藏。窗口跟随鼠标移动——**鼠标移动时显示、停止移动 10 秒后自动隐藏**——因此也适用于不提供文本光标位置的终端类应用。
 
 ## 特性
 
@@ -12,7 +12,7 @@
 - 按 `Shift` 切换后立即刷新状态。
 - 配合 Fcitx5/Rime 的按输入上下文状态策略，记住不同程序和窗口各自的中英文输入状态，切换回来时自动恢复。
 - 输入或候选词出现时隐藏，空闲后自动显示。
-- 始终跟随鼠标，而不是依赖应用提供的光标矩形。
+- 始终跟随鼠标，而不是依赖应用提供的光标矩形；鼠标移动即显示，停止移动 10 秒后自动隐藏。
 - 兼容 WindTerm 等全屏 X11 应用：使用非托管浮动窗口，避免被全屏窗口遮挡。
 - 应用没有 Fcitx5 输入上下文时，仍可显示状态窗口。
 - 不修改 Fcitx5 的输入法配置，也不会给自身创建输入上下文。
@@ -72,7 +72,7 @@ python3 src/fcitx5-floating-indicator.py
 
 A small floating Chinese/English input-state indicator for Fcitx5 and Rime on X11 desktops.
 
-The indicator shows a compact “中/英” window when the user is idle and there is no candidate list. It hides while typing or composing text, and follows the mouse pointer so it also works in terminal-style applications that do not expose a text-cursor position.
+The indicator shows a compact “中/英” window when the user is idle and there is no candidate list. It hides while typing or composing text. The window appears while the mouse is moving and hides 10 seconds after the mouse stops, so it also works in terminal-style applications that do not expose a text-cursor position.
 
 ## Features
 
@@ -80,7 +80,7 @@ The indicator shows a compact “中/英” window when the user is idle and the
 - Refreshes immediately after switching with `Shift`.
 - Remembers the input state separately for different applications and windows when Fcitx5/Rime is configured to keep per-input-context state, restoring each state when you switch back.
 - Hides while typing or while the candidate window is visible, then reappears when idle.
-- Follows the mouse pointer instead of relying on an application-provided cursor rectangle.
+- Follows the mouse pointer instead of relying on an application-provided cursor rectangle; appears while the mouse moves and hides 10 seconds after it stops.
 - Works above fullscreen X11 applications such as WindTerm by using an unmanaged floating window.
 - Can still display the state window in applications that do not create an Fcitx5 input context.
 - Does not modify Fcitx5 input-method configuration or create an input context for itself.

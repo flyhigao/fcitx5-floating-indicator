@@ -1,5 +1,8 @@
 #!/usr/bin/python3
-"""Small X11 indicator for the current Fcitx5/Rime Chinese-English state."""
+"""Small X11 indicator for the current Fcitx5/Rime Chinese-English state.
+
+Shows while the mouse is moving and hides 10 seconds after it stops.
+"""
 
 import dbus
 import dbus.mainloop.glib
@@ -7,6 +10,7 @@ import gi
 import re
 import subprocess
 import threading
+import time
 
 gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
@@ -38,6 +42,12 @@ class Indicator:
         self.idle_serial = 0
         self.visible = False
         self.last_state = None
+
+        # 鼠标移动即显示、停止 10 秒后隐藏
+        self.last_mouse_pos = None
+        self.last_mouse_move = time.monotonic()  # 启动时视为刚移动过
+        self.mouse_hide_source = None
+        self.mouse_idle_timeout = 10.0
 
         # A borderless top-level window is more reliable than Gtk.POPUP on
         # DDE/KWin, while the hints below keep it non-focusable and out of
@@ -367,17 +377,41 @@ class Indicator:
         )
 
     def _poll_position(self):
+        display = Gdk.Display.get_default()
+        _screen, x, y = display.get_default_seat().get_pointer().get_position()
+        moved = (
+            self.last_mouse_pos is None
+            or abs(x - self.last_mouse_pos[0]) > 0
+            or abs(y - self.last_mouse_pos[1]) > 0
+        )
+        self.last_mouse_pos = (x, y)
+        if moved:
+            self._on_mouse_moved()
         if self.visible and not self.has_composition:
             self._move()
-        elif (
-            not self.visible
-            and self.focused_context is None
-            and not self.typing
-            and not self.has_composition
-            and not self._candidate_window_visible()
-        ):
-            self._show()
         return True
+
+    def _on_mouse_moved(self):
+        """鼠标动了：重置 10 秒隐藏计时器；隐藏期间若未在输入则重新显示。"""
+        self.last_mouse_move = time.monotonic()
+        if self.mouse_hide_source is not None:
+            GLib.source_remove(self.mouse_hide_source)
+        self.mouse_hide_source = GLib.timeout_add(
+            int(self.mouse_idle_timeout * 1000), self._hide_when_mouse_idle
+        )
+        if not self.visible and not self.typing and not self.has_composition \
+                and not self._candidate_window_visible():
+            self._show()
+
+    def _hide_when_mouse_idle(self):
+        """鼠标停止移动 10 秒后隐藏窗口。"""
+        self.mouse_hide_source = None
+        self._hide()
+        return False
+
+    @property
+    def _mouse_active(self):
+        return time.monotonic() - self.last_mouse_move < self.mouse_idle_timeout
 
     def _initial_show(self):
         self._show()
@@ -389,6 +423,9 @@ class Indicator:
         return False
 
     def _show(self):
+        # 只在鼠标近期移动过时显示（移动中持续显示，停止 10 秒后隐藏）
+        if not self._mouse_active:
+            return
         if not self.visible:
             self.window.show()
             self._set_input_passthrough()

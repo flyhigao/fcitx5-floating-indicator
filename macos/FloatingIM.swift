@@ -1,11 +1,11 @@
 // FloatingIM.swift
-// macOS 版「中/英」浮动指示器：跟随鼠标、输入时隐藏、可盖过全屏应用。
+// macOS 版「中/英」浮动指示器：鼠标移动时显示、静止 10 秒后隐藏、输入时隐藏、可盖过全屏应用。
 //
 // 与 X11/fcitx5 版（src/fcitx5-floating-indicator.py）的对应关系：
 //   - 读 Fcitx5 中英状态         -> TISCopyCurrentKeyboardInputSource() 读当前输入源
 //   - dbus-monitor 窃听按键事件  -> NSEvent 全局按键监听 + HID 按键轮询
 //   - GTK override-redirect 窗口 -> 无边框 NSPanel（nonactivating + 全屏辅助）
-//   - xdotool 跟随鼠标           -> 轮询 NSEvent.mouseLocation（无需权限）
+//   - xdotool 跟随鼠标           -> 轮询 NSEvent.mouseLocation（无需权限；移动即显示，停 10 秒隐藏）
 //
 // 豆包输入法（及其它不暴露内部状态的输入法）的中英检测：
 //   豆包内部 Shift 切换不改变系统输入源，也不广播通知。但它会在切换时
@@ -47,6 +47,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var keyMonitor: Any?
     private var observers: [NSObjectProtocol] = []
 
+    // MARK: - 鼠标移动显示 / 静止隐藏
+
+    private let mouseIdleTimeout: TimeInterval = 10
+    private var lastMousePosition: NSPoint?
+    private var lastMouseMove = Date()
+    private var mouseHideWorkItem: DispatchWorkItem?
+    private var typingHideUntil = Date.distantPast
+
     // MARK: - 输入源层状态
 
     private var currentSourceIsIME = false
@@ -84,7 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             requestScreenPermission()
         }
 
-        // 跟随鼠标：与 Linux 版一致，250ms 轮询一次
+        // 跟随鼠标：与 Linux 版一致，250ms 轮询一次；移动即显示，停 10 秒后隐藏
         let follow = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
             self?.updatePosition()
         }
@@ -157,9 +165,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         panel.contentView = indicatorView
     }
 
+    /// 鼠标最近 10 秒内是否移动过
+    private var mouseActive: Bool {
+        Date().timeIntervalSince(lastMouseMove) < mouseIdleTimeout
+    }
+
     private func updatePosition() {
-        guard visible else { return }
         let mouse = NSEvent.mouseLocation
+        let moved: Bool
+        if let last = lastMousePosition {
+            moved = abs(last.x - mouse.x) > 0.5 || abs(last.y - mouse.y) > 0.5
+        } else {
+            moved = true
+        }
+        lastMousePosition = mouse
+        if moved {
+            lastMouseMove = Date()
+            scheduleMouseIdleHide()
+            // 鼠标移动即显示（打字隐藏冷却期内除外）
+            if !suppressed && Date() >= typingHideUntil {
+                showPanel()
+            }
+        }
+        guard visible else { return }
+        positionPanel(at: mouse)
+    }
+
+    private func positionPanel(at mouse: NSPoint) {
         let size = panel.frame.size
         var origin = NSPoint(x: mouse.x + 12, y: mouse.y - 16 - size.height)
         if let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) ?? NSScreen.main {
@@ -174,16 +206,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func show() {
-        guard !suppressed, !visible else { return }
+        guard !suppressed, !visible, mouseActive else { return }
+        showPanel()
+        updatePosition()
+    }
+
+    private func showPanel() {
+        guard !visible else { return }
         visible = true
         panel.orderFrontRegardless()
-        updatePosition()
     }
 
     private func hide() {
         guard visible else { return }
         visible = false
         panel.orderOut(nil)
+    }
+
+    /// 鼠标停止移动 10 秒后隐藏窗口
+    private func scheduleMouseIdleHide() {
+        mouseHideWorkItem?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            self?.hide()
+        }
+        mouseHideWorkItem = item
+        DispatchQueue.main.asyncAfter(deadline: .now() + mouseIdleTimeout, execute: item)
     }
 
     private func scheduleShow(after delay: TimeInterval) {
@@ -542,6 +589,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func handleGlobalEvent(_ event: NSEvent) {
         switch event.type {
         case .keyDown:
+            typingHideUntil = Date().addingTimeInterval(0.8)
             hide()
             scheduleShow(after: 0.8)
         case .flagsChanged:
