@@ -409,8 +409,8 @@ class Indicator:
         screen = display.get_default_screen()
         pointer = display.get_default_seat().get_pointer()
         _screen, target_x, target_y = pointer.get_position()
-        target_x += 12
-        target_y += 16
+        target_x += 24
+        target_y += 28
 
         self.window.show_all()
         _minimum, natural = self.window.get_preferred_size()
