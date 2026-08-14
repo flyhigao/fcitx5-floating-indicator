@@ -14,6 +14,7 @@ install -Dm644 \
   "${systemd_dir}/fcitx5-floating-indicator.service"
 
 systemctl --user daemon-reload
-systemctl --user enable --now fcitx5-floating-indicator.service
+systemctl --user enable fcitx5-floating-indicator.service
+systemctl --user restart fcitx5-floating-indicator.service
 
 printf 'Installed and started fcitx5-floating-indicator.service\n'
