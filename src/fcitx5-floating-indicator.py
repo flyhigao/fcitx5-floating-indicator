@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Small X11 indicator for the current Fcitx5/Rime Chinese-English state.
 
-Shows while the mouse is moving and hides 10 seconds after it stops.
+Shows while the mouse is moving and hides 1 second after it stops.
 """
 
 import dbus
@@ -43,11 +43,11 @@ class Indicator:
         self.visible = False
         self.last_state = None
 
-        # 鼠标移动即显示、停止 10 秒后隐藏
+        # 鼠标移动即显示、停止 1 秒后隐藏
         self.last_mouse_pos = None
         self.last_mouse_move = time.monotonic()  # 启动时视为刚移动过
         self.mouse_hide_source = None
-        self.mouse_idle_timeout = 10.0
+        self.mouse_idle_timeout = 1.0
 
         # A borderless top-level window is more reliable than Gtk.POPUP on
         # DDE/KWin, while the hints below keep it non-focusable and out of
@@ -392,7 +392,7 @@ class Indicator:
         return True
 
     def _on_mouse_moved(self):
-        """鼠标动了：重置 10 秒隐藏计时器；隐藏期间若未在输入则重新显示。"""
+        """鼠标动了：重置 1 秒隐藏计时器；隐藏期间若未在输入则重新显示。"""
         self.last_mouse_move = time.monotonic()
         if self.mouse_hide_source is not None:
             GLib.source_remove(self.mouse_hide_source)
@@ -404,7 +404,7 @@ class Indicator:
             self._show()
 
     def _hide_when_mouse_idle(self):
-        """鼠标停止移动 10 秒后隐藏窗口。"""
+        """鼠标停止移动 1 秒后隐藏窗口。"""
         self.mouse_hide_source = None
         self._hide()
         return False
@@ -423,7 +423,7 @@ class Indicator:
         return False
 
     def _show(self):
-        # 只在鼠标近期移动过时显示（移动中持续显示，停止 10 秒后隐藏）
+        # 只在鼠标近期移动过时显示（移动中持续显示，停止 1 秒后隐藏）
         if not self._mouse_active:
             return
         if not self.visible:
